@@ -15,6 +15,7 @@ psycopg2-binary==2.9.10
 pyasn1==0.4.8
 pydantic==2.10.6
 pydantic_core==2.27.2
+python-dotenv==1.0.1
 python-jose==3.4.0
 referencing==0.36.2
 rpds-py==0.23.1
