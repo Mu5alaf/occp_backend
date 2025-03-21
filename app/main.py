@@ -2,16 +2,17 @@ import asyncio
 import websockets
 import os 
 
+from typing import Annotated
 from datetime import datetime, timezone
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import session
+from fastapi import FastAPI, Depends, HTTPException
+from starlette import status
+from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
 from ocpp.v16.enums import AuthorizationStatus, RegistrationStatus
 from ocpp.v16 import ChargePoint as cp_v16, call_result, call
 from ocpp.routing import on
-from database import engine, SessionLocal
-
+from .database import engine, SessionLocal
 from .models import (
     Base,
     Charger, 
@@ -20,17 +21,17 @@ from .models import (
     ChargerStatus, 
     TransactionStatus, 
     ChargerUser,
-    User)
+    User
+    )
 
-from auth import(
-    OAuth2PasswordBearer,
+from .auth import(
+    OAuth2PasswordRequestForm,
     CreateUserRequest,
     Token,
     create_access_token,
     authenticate_user,
     get_current_user,
     pwd_context,
-    db_dependency
 )
 
 import logging
@@ -58,7 +59,7 @@ def get_db():
 
 
 class ChargePoint(cp_v16):
-    def __init__(self, charge_point_id, websocket, db: session):
+    def __init__(self, charge_point_id, websocket, db: Session):
         super().__init__(charge_point_id, websocket)
         self.db = db
 
@@ -115,7 +116,6 @@ class ChargePoint(cp_v16):
         )
         self.db.add(transaction)
         self.db.commit()
-        print(f"")
         logger.info(f"Charging started: Connector {connector_id} - ID {id_tag}")
         return call_result.StartTransaction(
             transaction_id=transaction.id, 
@@ -135,3 +135,54 @@ class ChargePoint(cp_v16):
         return call_result.StopTransaction(
             id_tag_info={"status": AuthorizationStatus.accepted} 
             )
+
+
+# Websocket connection
+async def on_connect(websocket, path):
+    charge_point_id = path.strip('/')
+    db = SessionLocal()
+    protocol = websocket.subprotocol
+    # handel both 
+    if protocol == 'ocpp1.6':
+        cp_instance = cp_v16(charge_point_id, websocket) 
+        active_chargers[charge_point_id] = cp_instance
+        logger.info(f"Charger {charge_point_id} connected with protocol {protocol}")
+        await cp_instance.start()
+    else:
+        logger.warning(f"Unsupported protocol: {protocol}. Only OCPP 1.6 is supported.")
+    db.close()
+
+# register endpoint
+@app.post("/auth/register", response_model=Token)
+async def register(user_data: CreateUserRequest, db: Annotated[Session, Depends(get_db)]):
+    hashed_password = pwd_context.hash(user_data.password)
+    new_user = User(username=user_data.username, hashed_password=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    access_token = create_access_token(data={"sub": new_user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# Auth endpoint
+@app.post("/auth/token", response_model=Token)
+async def login( db: Annotated[Session, Depends(get_db)] , form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect Username OR password"
+        )
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+async def main():
+    server = websockets.serve(on_connect, "127.0.0.2", 9000)
+    await server
+    logger.info("WebSocket server running on ws://127.0.0.2:9000")
+    await asyncio.Future()
+
+if __name__ == "__main__":
+    import uvicorn
+    asyncio.run_coroutine_threadsafe(main(), asyncio.get_event_loop())
+    uvicorn.run(app, host="127.0.0.1", port=8000)

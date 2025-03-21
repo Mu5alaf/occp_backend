@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated  
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette import status
 from passlib.context import CryptContext
-from database import SessionLocal
-from models import User
+from .database import SessionLocal
+from .models import User
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from dotenv import load_dotenv
@@ -44,7 +44,7 @@ def get_db():
         db.close()
 
 
-db_dependency = Annotated(Session, Depends(get_db))
+db_dependency = Annotated[Session, Depends(get_db)] 
 
 
 # Auth Flow
