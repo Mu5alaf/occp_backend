@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCPP Backend Tester</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <h1>OCPP Backend Tester</h1>
+
+    <!-- Authentication Section -->
+    <div class="section" id="auth-section">
+        <h2>Login or Register</h2>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <button onclick="register()">Register</button>
+        <p id="auth-status"></p>
+    </div>
+
+    <!-- Chargers Section -->
+    <div class="section hidden" id="chargers-section">
+        <h2>Connected Chargers</h2>
+        <button onclick="listChargers()">Refresh Chargers</button>
+        <input type="text" id="new-charger-id" placeholder="New Charger ID">
+        <button onclick="addCharger()">Add Charger</button>
+        <p id="add-charger-status"></p>
+        <ul id="chargers-list"></ul>
+    </div>
+
+    <!-- Control Section -->
+    <div class="section hidden" id="control-section">
+        <h2>Control Charging</h2>
+        <input type="text" id="charger-id" placeholder="Charger ID">
+        <div class="button-group">
+            <button onclick="startCharging()">Start Charging</button>
+            <button onclick="stopCharging()">Stop Charging</button>
+        </div>
+        <p id="control-status"></p>
+    </div>
+
+    <!-- Transactions Section -->
+    <div class="section hidden" id="transactions-section">
+        <h2>Transactions</h2>
+        <button onclick="listTransactions()">Refresh Transactions</button>
+        <ul id="transactions-list"></ul>
+    </div>
+
+    <!-- Logout Section -->
+    <div class="section hidden" id="logout-section">
+        <button onclick="logout()" class="logout">Logout</button>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
